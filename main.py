@@ -109,10 +109,11 @@ def check_rang(player, guild):
                 "tier": typequeue.get('tier'),
                 "rank": typequeue.get('rank'),
                 "lps": typequeue.get('leaguePoints'),
-                "enBo": 0,
-                "progress": None
+                "eb": 0,
+                "prog": None
             }
-            if guild[3] != 0:
+            if guild[3] != '0':
+                print(guild[3])
                 ret += "<@&" + str(guild[3]) + "> "
             if typequeue.get('miniSeries') is not None:
                 eloactuel["enBo"] = True
@@ -394,10 +395,9 @@ async def on_update():
     global compteur
     compteur += 1
     print("\nVérification n°" + str(compteur))
-    # ICI LA => Vérification est pas encore faite
     for i in db.UpdatePlayerRecover():
-        channel = client.get_channel(i[11])
-        guild_infos = [i[9], i[10], i[11], i[12]]
+        channel = client.get_channel(int(i[12]))
+        guild_infos = [i[10], i[11], i[12], i[13]]
         retour = check_rang(i, guild_infos)
         if retour is None:
             print("Erreur RIOT API.")
