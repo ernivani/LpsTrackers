@@ -523,3 +523,5 @@ env/share/python-wheels/webencodings-0.5.1-py2.py3-none-any.whl
 env/share/python-wheels/wheel-0.34.2-py2.py3-none-any.whl
 main.py
 __pycache__/Database.cpython-39.pyc
+Token.py
+__pycache__/Token.cpython-39.pyc
