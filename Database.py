@@ -34,6 +34,12 @@ class Database(object):
         self.cursor.execute(request, params)
         self.db.commit()
 
+    def getServeur(self, guildid):
+        request = "SELECT * FROM serveurs WHERE guildID=%s"
+        params = [guildid]
+        self.cursor.execute(request, params)
+        return self.cursor.fetchone()
+
     def removeAllJoueurs(self, guildid):
         r1 = "SELECT * FROM joueurs;"
         self.cursor.execute(r1)

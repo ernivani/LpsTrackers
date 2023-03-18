@@ -195,6 +195,9 @@ async def on_ready():
         print(
             f'{guild.name}(id: {guild.id})'
         )
+        if db.getServeur(guild.id) is None:
+            db.addServeur(guild.id, guild.name, 0, 0)
+            
     print("Synchro du tree...")
     await client.tree.sync()
     await client.wait_until_ready()
@@ -349,7 +352,7 @@ async def info_joueur_discord(ints, membre: discord.Member):
 
 @client.tree.command(name="alert", description="Alerte tous les utilisateurs du bot")
 async def alertGuilds(ints, message: str):
-    if ints.user.id != admin_atlas_id:
+    if ints.user.id != admin_id:
         await ints.response.send_message("Seul l'administrateur peut utiliser cette commande")
         return
     await ints.response.defer()
@@ -366,7 +369,7 @@ async def alertGuilds(ints, message: str):
 @client.tree.command(name="alertadmin", description="Alerte l'administrateur d'un(e) potentiel(le) problème/demande")
 async def alert_admin(ints, message: str):
     await ints.response.defer()
-    atlas = await client.fetch_user(admin_atlas_id)
+    atlas = await client.fetch_user(admin_id)
     ret = "<@" + str(ints.user.id) + "> vous a envoyé un message : \n\n" + message
     await atlas.send(ret)
     await ints.followup.send("Votre message a bien été envoyé. Vous serez recontacté sous peu."
@@ -412,7 +415,7 @@ async def classement():
     td = datetime.datetime.now(ZoneInfo("Europe/Paris"))
     if td.weekday() != 6:
         return
-    c = db.GetClassement(stratacademy_id)
+    c = db.GetClassement(server_id)
     msg_return = "La semaine est finie ! Voici les meilleurs joueurs de la semaine : \n"
     msg_return += ":first_place: " + c[0][0] + " (<@" + str(c[0][1]) + ">) avec " + str(c[0][2]) + " victoires !\n"
     msg_return += ":second_place: " + c[1][0] + " (<@" + str(c[1][1]) + ">) avec " + str(c[1][2]) + " victoires !\n"
