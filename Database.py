@@ -87,11 +87,15 @@ class Database(object):
         self.db.commit()
 
     def updateJoueur(self, playerid, summonername, tier, rank, lps, eb, prog):
-        request = "UPDATE joueurs SET SummonerName=%s, Tier=%s, Rank=%s, leaguePoints=%s, enBO=%s, Progress=%s"\
-                  " WHERE EncryptedID=%s"
+        request = "UPDATE joueurs SET SummonerName=%s, Tier=%s, `Rank`=%s, leaguePoints=%s, enBO=%s, Progress=%s"\
+             " WHERE EncryptedID=%s"
         params = [summonername, tier, rank, lps, eb, prog, playerid]
-        self.cursor.execute(request, params)
-        self.db.commit()
+        try:
+            self.cursor.execute(request, params)
+            self.db.commit()
+        except Exception as e:
+            print("An error occurred while updating the player record: ", e)
+
 
     def recoverAllGuilds(self):
         request = "SELECT * FROM serveurs WHERE channelIdMessage != 0"
