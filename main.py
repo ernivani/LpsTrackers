@@ -11,7 +11,7 @@ from Token import TOKEN, riot_api_key
 
 compteur = 0
 db = Database()
-admin_id = 486268235017093130
+admin_id = [486268235017093130]
 server_id = 1077666645176225893
 
 
@@ -353,7 +353,7 @@ async def info_joueur_discord(ints, membre: discord.Member):
 
 @client.tree.command(name="alert", description="Alerte tous les utilisateurs du bot")
 async def alertGuilds(ints, message: str):
-    if ints.user.id != admin_id:
+    if ints.user.id not in admin_id:
         await ints.response.send_message("Seul l'administrateur peut utiliser cette commande")
         return
     await ints.response.defer()
@@ -370,7 +370,7 @@ async def alertGuilds(ints, message: str):
 @client.tree.command(name="alertadmin", description="Alerte l'administrateur d'un(e) potentiel(le) problème/demande")
 async def alert_admin(ints, message: str):
     await ints.response.defer()
-    atlas = await client.fetch_user(admin_id)
+    atlas = await client.fetch_user(admin_id[0])
     ret = "<@" + str(ints.user.id) + "> vous a envoyé un message : \n\n" + message
     await atlas.send(ret)
     await ints.followup.send("Votre message a bien été envoyé. Vous serez recontacté sous peu."
