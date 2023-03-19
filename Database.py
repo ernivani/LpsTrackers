@@ -75,7 +75,6 @@ class Database(object):
 
     def GetJoueurFromMemberId(self, memberID):
         request = "SELECT * FROM joueurs WHERE memberID = %s"
-        print(memberID)
         params = [memberID]
         self.cursor.execute(request, params)
         return self.cursor.rowcount, self.cursor.fetchall()
@@ -160,9 +159,26 @@ class Database(object):
     def GetClassement(self, guildid):
         request = "SELECT joueurs.SummonerName, joueurs.memberID, classement.nbrWin, serveurs.channelIdMessage " \
                   "FROM classement INNER JOIN joueurs ON joueurs.EncryptedID = classement.joueur INNER JOIN serveurs " \
-                  "ON serveurs.guildID = joueurs.guildID WHERE joueurs.guildID = %s ORDER BY classement.nbrWin DESC" \
-                  " LIMIT 3;"
+                  "ON serveurs.guildID = joueurs.guildID WHERE joueurs.guildID = %s ORDER BY classement.nbrWin DESC;" 
         params = [guildid]
         self.cursor.execute(request, params)
         result = self.cursor.fetchall()
         return result
+
+    def addGameHistory(self, EncryptedID, date_time, summoner_names, result, lp_change):
+        request = "INSERT INTO game_history (EncryptedID, date_time, summoner_names, result, lp_change) VALUES (%s, %s, %s, %s, %s)"
+        params = [EncryptedID, date_time, summoner_names, result, lp_change]
+        try:
+            self.cursor.execute(request, params)
+            self.db.commit()
+            return self.cursor.rowcount
+        except mysql.connector.errors.IntegrityError:
+            return 2
+        
+    def getGameHistory(self, EncryptedID):
+        request = "SELECT * FROM game_history WHERE EncryptedID = %s ORDER BY date_time DESC LIMIT 10"
+        params = [EncryptedID]
+        self.cursor.execute(request, params)
+        result = self.cursor.fetchall()
+        return result
+    

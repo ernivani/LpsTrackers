@@ -99,7 +99,6 @@ def addPlayer(summonername, guild, member_id):
 def check_rang(player, guild):
     urlRanks = 'https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/' + player[0] + \
                '?api_key=' + riot_api_key
-    print(urlRanks)
     r = requests.get(urlRanks)
     ranking = r.json()
     if r.status_code != 200:
@@ -153,7 +152,7 @@ def check_rang(player, guild):
                        + typequeue.get('tier')
                 db.updateJoueur(player[0], typequeue.get('summonerName'), typequeue.get('tier'), typequeue.get('rank'),
                                 typequeue.get('leaguePoints'), eloactuel.get("enBo"), eloactuel.get("progress"))
-                return [ret, newelo]
+                return [ret, newelo, 0]
             if typequeue.get('tier') != eloactuel.get("tier") \
                     and tiers.get(typequeue.get('tier')) > tiers.get(eloactuel.get("tier")):
                 ret += str(typequeue.get('summonerName')) + " a rank up de " + eloactuel.get('tier') + " à " \
@@ -161,7 +160,7 @@ def check_rang(player, guild):
                 db.updateJoueur(player[0], typequeue.get('summonerName'), typequeue.get('tier'), typequeue.get('rank'),
                                 typequeue.get('leaguePoints'), eloactuel.get("enBo"), eloactuel.get("progress"))
                 db.UpdateWinClassement(player[0])
-                return [ret, newelo]
+                return [ret, newelo, 1]
 
             if typequeue.get('rank') != eloactuel.get("rank") \
                     and ranks.get(typequeue.get('rank')) < ranks.get(eloactuel.get("rank")):
@@ -170,7 +169,7 @@ def check_rang(player, guild):
                        + " à " + typequeue.get('tier') + ' ' + typequeue.get('rank')
                 db.updateJoueur(player[0], typequeue.get('summonerName'), typequeue.get('tier'), typequeue.get('rank'),
                                 typequeue.get('leaguePoints'), eloactuel.get("enBo"), eloactuel.get("progress"))
-                return [ret, newelo]
+                return [ret, newelo, 0]
             if typequeue.get('rank') != eloactuel.get("rank") \
                     and ranks.get(typequeue.get('rank')) > ranks.get(eloactuel.get("rank")):
                 ret += str(typequeue.get('summonerName')) + " est monté de " + eloactuel.get("tier") + ' ' + \
@@ -179,7 +178,7 @@ def check_rang(player, guild):
                 db.updateJoueur(player[0], typequeue.get('summonerName'), typequeue.get('tier'), typequeue.get('rank'),
                                 typequeue.get('leaguePoints'), eloactuel.get("enBo"), eloactuel.get("progress"))
                 db.UpdateWinClassement(player[0])
-                return [ret, newelo]
+                return [ret, newelo, 1]
 
             if typequeue.get('leaguePoints') != eloactuel.get("lps") and typequeue.get('leaguePoints') < \
                     eloactuel.get("lps"):
@@ -187,7 +186,7 @@ def check_rang(player, guild):
                        str(eloactuel.get("lps") - typequeue.get('leaguePoints')) + " LPs"
                 db.updateJoueur(player[0], typequeue.get('summonerName'), typequeue.get('tier'), typequeue.get('rank'),
                                 typequeue.get('leaguePoints'), eloactuel.get("enBo"), eloactuel.get("progress"))
-                return [ret, newelo]
+                return [ret, newelo,0]
             if typequeue.get('leaguePoints') != eloactuel.get("lps") and typequeue.get('leaguePoints') > \
                     eloactuel.get("lps"):
                 ret += str(typequeue.get('summonerName')) + " a gagné +" + \
@@ -195,7 +194,18 @@ def check_rang(player, guild):
                 db.updateJoueur(player[0], typequeue.get('summonerName'), typequeue.get('tier'), typequeue.get('rank'),
                                 typequeue.get('leaguePoints'), eloactuel.get("enBo"), eloactuel.get("progress"))
                 db.UpdateWinClassement(player[0])
-                return [ret, newelo]
+                return [ret, newelo,1]
+            
+def add_history( EncryptedID, date_time, summoner_names, result, lp_change):
+    # def addGameHistory(self, EncryptedID, date_time, summoner_names, result, lp_change):
+    db = Database()
+    db.addGameHistory(EncryptedID=EncryptedID, date_time=date_time, summoner_names=summoner_names, result=result,
+                      lp_change=lp_change)
+
+
+def get_history(EncryptedID):
+    db = Database()
+    return db.getGameHistory(EncryptedID)
 
 
 @client.event
@@ -349,7 +359,7 @@ async def classement(ints):
         embed = discord.Embed(title="Classement", color=0x00ff00)
         for i in range(10):
             if i < len(res):
-                embed.add_field(name=f" -  " + res[i][0], value=str(res[i][2]) + " LPs", inline=False)
+                embed.add_field(name=f" -  " + res[i][0], value=str(res[i][2]) + " Wins", inline=False)
         await ints.followup.send(embed=embed)
 
 
@@ -357,23 +367,46 @@ async def classement(ints):
 async def profil(ints, summonername: str = None):
     db = Database()
     await ints.response.defer()
+
+    # Si le nom d'invocateur n'est pas précisé, on prend celui enregistré dans la base de données pour l'utilisateur
     if summonername is None:
-        summonername = db.GetPlayerInfoDiscord(ints.guild_id, ints.user.id)[1]
+        guild_id = ints.guild_id
+        user_id = ints.user.id
+        summonername = db.GetPlayerInfoDiscord(guild_id, user_id)[1]
         if summonername is None:
             await ints.followup.send("Vous n'avez pas de profil enregistré. Veuillez en créer un avec la commande /addjoueur")
             return
+
     print("Profil : un profil a été demandé à la BDD")
-    p = db.GetPlayerInfo(ints.guild_id, summonername)
-    if not p:
+    player_info = db.GetPlayerInfo(ints.guild_id, summonername)
+
+    if not player_info:
+        # Si le joueur n'existe pas dans la base de données, on renvoie un embed d'erreur
         embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
         embed.add_field(name="Rang", value="Joueur non trouvé", inline=False)
     else:
-        embed = discord.Embed(title=f"Profil de {p[1]}", color=0x00ff00)
-        embed.add_field(name="Rang", value=f"{p[2]} {p[3]} avec {p[4]} LPs", inline=False)
-        if p[5] == 1:
-            x = p[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
-            embed.add_field(name="BO", value=x, inline=False)
+        # Si le joueur existe, on crée un embed avec ses informations
+        player_name = player_info[1]
+        rank = f"{player_info[2]} {player_info[3]} avec {player_info[4]} LPs"
+        embed = discord.Embed(title=f"Profil de {player_name}", color=0x00ff00)
+        embed.add_field(name="Rang", value=rank, inline=False)
+
+        # On ajoute les informations de la dernière série de parties classées
+        if player_info[5] == 1:
+            games_str = player_info[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
+            embed.add_field(name="BO", value=games_str, inline=False)
+
+        # On ajoute l'historique des 10 dernières parties
+        games = get_history(player_info[0])
+        if games:
+            games_str = "\n".join([f"{game[1]} : {'Victoire' if game[3] == '1' else 'Défaite'} avec {game[4]} LPs" for game in games])
+            embed.add_field(name="Historique", value=games_str, inline=False)
+        else:
+            embed.add_field(name="Historique", value="Aucune partie trouvée", inline=False)
+
     await ints.followup.send(embed=embed)
+
+
 
 @client.tree.command(name="profildiscord", description="Affiche le profil d'un joueur")
 async def profil_discord(ints, membre: discord.Member = None):
@@ -408,7 +441,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return # empêcher l'affichage de l'erreur CommandNotFound
 
-@tasks.loop(minutes=3.0)
+@tasks.loop(minutes=3)
 async def on_update():
     global compteur
     compteur += 1
@@ -420,6 +453,9 @@ async def on_update():
         if retour is None:
             print("Erreur RIOT API.")
         elif retour[0] != "RAS":
+            lpchange = int(retour[1]['lps'] -int(i[4]))
+            add_history(EncryptedID=i[0], date_time=datetime.datetime.now(ZoneInfo("Europe/Paris")),
+                        summoner_names=i[1], result=retour[2], lp_change=lpchange)
             retour[0] += "\n" + displayInfo(retour[1])
             try:
                 await channel.send(str(retour[0]))
