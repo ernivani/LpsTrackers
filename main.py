@@ -60,7 +60,7 @@ def displayInfo(player):
     return temp
 
 
-def createPlayer(acc, rank, guild, member_id):
+def createPlayer(acc, rank, member_id):
     for typegames in rank:
         if typegames.get('queueType') == "RANKED_SOLO_5x5":
             if typegames.get('miniSeries') is not None:
@@ -71,12 +71,12 @@ def createPlayer(acc, rank, guild, member_id):
                 progress = ""
                 enBo = False
             rc = db.addJoueur(acc.get('id'), acc.get('name'), typegames.get('tier'), typegames.get('rank'),
-                              typegames.get('leaguePoints'), enBo, progress, guild.id, member_id)
+                              typegames.get('leaguePoints'), enBo, progress, member_id)
             db.AddClassement(acc.get('id'))
             return rc
 
 
-def addPlayer(summonername, guild, member_id):
+def addPlayer(summonername, member_id):
     urlSummoners = 'https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/' + summonername + \
                    '?api_key=' + riot_api_key
     r = requests.get(urlSummoners)
@@ -92,11 +92,11 @@ def addPlayer(summonername, guild, member_id):
     if r.status_code != 200:
         print("Erreur API Riot.")
         return None
-    nbr = createPlayer(account, ranking, guild, member_id)
+    nbr = createPlayer(account, ranking, member_id)
     return nbr
 
 
-def check_rang(player, guild):
+def check_rang(player, guild='0'):
     urlRanks = 'https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/' + player[0] + \
                '?api_key=' + riot_api_key
     r = requests.get(urlRanks)
@@ -124,9 +124,6 @@ def check_rang(player, guild):
                 "eb": 0,
                 "prog": None
             }
-            if guild[3] != '0':
-                print(guild[3])
-                ret += "<@&" + str(guild[3]) + "> "
             if typequeue.get('miniSeries') is not None:
                 eloactuel["enBo"] = True
                 newelo["enBo"] = 1
@@ -220,7 +217,7 @@ async def on_ready():
             f'{guild.name}(id: {guild.id})'
         )
         if db.getServeur(guild.id) is None:
-            db.addServeur(guild.id, guild.name, 0, 0)
+            db.addServeur(guild.id, guild.name, 0)
             
     print("Synchro du tree...")
     await client.tree.sync()
@@ -231,14 +228,13 @@ async def on_ready():
     
     print("Chargement des tâches...")
     on_update.start()
-    classement.start()
 
 
 
 @client.event
 async def on_guild_join(guild):
     print("GuildAdd : le bot a été ajouté sur un serveur")
-    db.addServeur(guild.id, guild.name, 0, 0)
+    db.addServeur(guild.id, guild.name, 0)
     return
 
 
@@ -246,7 +242,6 @@ async def on_guild_join(guild):
 async def on_guild_remove(guild):
     print("GuildRemove : un serveur a supprimé le bot")
     db.removeServeur(guild.id)
-    db.removeAllJoueurs(guild.id)
     return
 
 
@@ -284,15 +279,15 @@ async def initialize(ints, channelmessage: discord.TextChannel,
     else:
         if not roleaping:
             roleaping = 0
-            db.InitializeServer(ints.guild_id, channelmessage.id, roleaping)
+            db.InitializeServer( ints.guild.id, channelmessage.id)
         else:
-            db.InitializeServer(ints.guild_id, channelmessage.id, roleaping.id)
+            db.InitializeServer( ints.guild.id, channelmessage.id)
         await ints.response.send_message("Le serveur a bien été initialisé")
 
 @client.tree.command(name="addjoueur", description="S'ajouter dans la liste des joueurs")
 async def addJoueur(ints, nomjoueur: str):
     print("Addjoueur : une demande d'ajout a été envoyée")
-    ret = addPlayer(nomjoueur, ints.guild, ints.user.id)
+    ret = addPlayer(nomjoueur, ints.user.id)
     if ret is None:
         msg = "Erreur lors de l'ajout du joueur. Veuillez vérifier qu'il existe bien, qu'il est niveau 30 et qu'il" \
               " a fini ses games de placements."
@@ -304,25 +299,7 @@ async def addJoueur(ints, nomjoueur: str):
     else:
         print("Erreur lors de l'ajout.")
 
-@client.tree.command(name="listejoueurs", description="Liste des joueurs")
-async def listeJoueurs(ints):
-    await ints.response.defer()
-    print("Listejoueurs : une liste a été demandée à la BDD")
-    res = db.GetJoueursOfGuild(ints.guild_id)
-    g = ints.guild
-    retour = "Liste de(s) joueur(s) : \n"
-    if not res:
-        retour = "La liste des joueurs est vide"
-    else:
-        for i in res:
-            try:
-                m = await g.fetch_member(i[8])
-                retour += " - " + i[1] + " (" + m.name + ") \n"
-            except discord.NotFound:
-                retour += " - " + i[1] + " (ERREUR : NOT FOUND) \n"
-        temp = retour.rsplit('\n', 1)
-        retour = ''.join(temp)
-    await ints.followup.send(retour)
+
 
 @client.tree.command(name="alert", description="Alerte tous les utilisateurs du bot")
 async def alertGuilds(ints, message: str):
@@ -330,7 +307,7 @@ async def alertGuilds(ints, message: str):
         await ints.response.send_message("Seul l'administrateur peut utiliser cette commande")
         return
     await ints.response.defer()
-    for g in db.recoverAllGuilds():
+    for g in db.recoverAll():
         channel = client.get_channel(int(g[3]))
         try:
             await channel.send("Message de l'admin : \n>>> " + message)
@@ -352,15 +329,22 @@ async def alert_admin(ints, message: str):
 async def classement(ints):
     await ints.response.defer()
     print("Classement : un classement a été demandé à la BDD")
-    res = db.GetClassement(ints.guild_id)
+    res = db.GetClassement()
+
     if not res:
+        # Si le classement est vide, on renvoie un message d'erreur
         await ints.followup.send("Le classement est vide")
     else:
+        # Sinon, on crée un embed avec les 10 premiers joueurs du classement
         embed = discord.Embed(title="Classement", color=0x00ff00)
         for i in range(10):
             if i < len(res):
-                embed.add_field(name=f" -  " + res[i][0], value=str(res[i][2]) + " Wins", inline=False)
+                player_name = res[i][0]
+                player_wins = res[i][2]
+                embed.add_field(name=f"{i + 1}. {player_name}", value=f"{player_wins} Wins", inline=False)
+
         await ints.followup.send(embed=embed)
+
 
 
 @client.tree.command(name="profil", description="Affiche le profil d'un joueur")
@@ -370,20 +354,21 @@ async def profil(ints, summonername: str = None):
 
     # Si le nom d'invocateur n'est pas précisé, on prend celui enregistré dans la base de données pour l'utilisateur
     if summonername is None:
-        guild_id = ints.guild_id
         user_id = ints.user.id
-        summonername = db.GetPlayerInfoDiscord(guild_id, user_id)[1]
+        summonername = db.GetPlayerInfoDiscord(user_id)
         if summonername is None:
             await ints.followup.send("Vous n'avez pas de profil enregistré. Veuillez en créer un avec la commande /addjoueur")
             return
+        
+        summonername = summonername[1]
 
     print("Profil : un profil a été demandé à la BDD")
-    player_info = db.GetPlayerInfo(ints.guild_id, summonername)
+    player_info = db.GetPlayerInfo( summonername)
 
     if not player_info:
         # Si le joueur n'existe pas dans la base de données, on renvoie un embed d'erreur
         embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
-        embed.add_field(name="Rang", value="Joueur non trouvé", inline=False)
+        embed.add_field(name="Rang", value="Joueur non trouvé dans notre base de données", inline=False)
     else:
         # Si le joueur existe, on crée un embed avec ses informations
         player_name = player_info[1]
@@ -413,17 +398,18 @@ async def profil_discord(ints, membre: discord.Member = None):
     db = Database()
     await ints.response.defer()
     if membre is None:
-        summonername = db.GetPlayerInfoDiscord(ints.guild_id, ints.user.id)[1]
+        summonername = db.GetPlayerInfoDiscord( ints.user.id)[1]
         if summonername is None:
             await ints.followup.send("Vous n'avez pas de profil enregistré. Veuillez en créer un avec la commande /addjoueur")
             return
     else:
-        summonername = db.GetPlayerInfoDiscord(ints.guild_id, membre.id)[1]
+        summonername = db.GetPlayerInfoDiscord( membre.id)
         if summonername is None:
-            await ints.followup.send("Ce joueur n'a pas de profil enregistré. Veuillez en créer un avec la commande /addjoueur")
+            await ints.followup.send("Ce joueur n'a pas de profil enregistré. Demandez lui de créer un profil avec la commande /addjoueur")
             return
+        summonername = summonername[1]
     print("Profil : un profil a été demandé à la BDD")
-    p = db.GetPlayerInfo(ints.guild_id, summonername)
+    p = db.GetPlayerInfo( summonername)
     if not p:
         embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
         embed.add_field(name="Rang", value="Joueur non trouvé", inline=False)
@@ -447,9 +433,8 @@ async def on_update():
     compteur += 1
     print("\nVérification n°" + str(compteur))
     for i in db.UpdatePlayerRecover():
-        channel = client.get_channel(int(i[12]))
-        guild_infos = [i[10], i[11], i[12], i[13]]
-        retour = check_rang(i, guild_infos)
+        channel = db.getAllChannels()
+        retour = check_rang(i)
         if retour is None:
             print("Erreur RIOT API.")
         elif retour[0] != "RAS":
@@ -458,23 +443,11 @@ async def on_update():
                         summoner_names=i[1], result=retour[2], lp_change=lpchange)
             retour[0] += "\n" + displayInfo(retour[1])
             try:
-                await channel.send(str(retour[0]))
+                for c in channel:
+                    if c[0] == i[0]:
+                        await client.get_channel(c[1]).send(retour[0])
             except discord.errors.Forbidden:
-                print("Error guild '" + guild_infos[1] + "' : Le bot n'a pas le droit d'écrire"
-                                                         " dans le channel initialisé.")
+                print("Error guild not found")
 
-@tasks.loop(time=datetime.time(21, 0, 0, 0, ZoneInfo("Europe/Paris")))
-async def classement():
-    td = datetime.datetime.now(ZoneInfo("Europe/Paris"))
-    if td.weekday() != 6:
-        return
-    c = db.GetClassement(server_id)
-    msg_return = "La semaine est finie ! Voici les meilleurs joueurs de la semaine : \n"
-    msg_return += ":first_place: " + c[0][0] + " (<@" + str(c[0][1]) + ">) avec " + str(c[0][2]) + " victoires !\n"
-    msg_return += ":second_place: " + c[1][0] + " (<@" + str(c[1][1]) + ">) avec " + str(c[1][2]) + " victoires !\n"
-    msg_return += ":third_place: " + c[2][0] + " (<@" + str(c[2][1]) + ">) avec " + str(c[2][2]) + " victoires !\n"
-    msg_return += "\nBravo à tous les participants. La classement est maintenant reset. A la semaine prochaine !"
-    await client.get_channel(c[0][3]).send(msg_return)
-    db.ResetClassement()
 
 client.run(TOKEN)

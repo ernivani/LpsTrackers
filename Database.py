@@ -14,17 +14,20 @@ class Database(object):
         except Exception as e:
             print(e)
 
-    def InitializeServer(self, guildid, cim, rtp):
-        request = "UPDATE serveurs SET channelIdMessage=%s, roleToPing=%s " \
-                  "WHERE guildId=%s"
-        params = [cim, rtp, guildid]
+    def InitializeServer(self, guildid, cim):
+        request = "UPDATE serveurs SET channelIdMessage=%s " \
+                "WHERE guildID=%s"
+        params = [cim, guildid]
         self.cursor.execute(request, params)
         self.db.commit()
 
-    def addServeur(self, guildid, guildname, cim, rtp):
-        request = "INSERT INTO serveurs (guildID, guildName, channelIdMessage, roleToPing) "\
-                  "VALUES (%s, %s, %s, %s)"
-        params = [guildid, guildname, cim, rtp]
+
+    def addServeur(self, guildid, guildname, cim):
+        request = "INSERT INTO serveurs (guildID, guildName, channelIdMessage) "\
+                  "VALUES (%s, %s, %s);"
+        params = [guildid, guildname, cim]
+        # print the SQL query
+        print(request , params)
         self.cursor.execute(request, params)
         self.db.commit()
 
@@ -39,32 +42,16 @@ class Database(object):
         params = [guildid]
         self.cursor.execute(request, params)
         return self.cursor.fetchone()
+    
+    def getAllChannels(self):
+        request = "SELECT channelIdMessage FROM serveurs WHERE channelIdMessage != 0"
+        self.cursor.execute(request)
+        return self.cursor.fetchall()
 
-    def removeAllJoueurs(self, guildid):
-        r1 = "SELECT * FROM joueurs;"
-        self.cursor.execute(r1)
-        j = self.cursor.fetchall()
-        enc_ids = []
-        for jr in j:
-            enc_ids.append(jr[0])
-        dup = [x for i, x in enumerate(enc_ids) if x in enc_ids[:i]]
-        del_list = []
-        for joueur in j:
-            if joueur[0] not in dup and joueur[7] == guildid:
-                del_list.append(joueur[0])
-        if del_list:
-            r2 = "DELETE FROM classement WHERE joueur IN ({});".format(", ".join(del_list))
-            self.cursor.execute(r2)
-            self.db.commit()
-        r3 = "DELETE FROM joueurs WHERE guildID = %s"
-        p2 = [guildid]
-        self.cursor.execute(r3, p2)
-        self.db.commit()
-
-    def addJoueur(self, encryptedid, summonername, tier, rank, lps, eb, prog, guildid, member_id):
+    def addJoueur(self, encryptedid, summonername, tier, rank, lps, eb, prog, member_id):
         request = "INSERT INTO joueurs (EncryptedID, SummonerName, Tier, `Rank`, leaguePoints, enBO, Progress, " \
-                "guildID, memberID) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        params = [encryptedid, summonername, tier, rank, lps, eb, prog, guildid, member_id]
+                " memberID) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        params = [encryptedid, summonername, tier, rank, lps, eb, prog, member_id]
         try:
             self.cursor.execute(request, params)
             self.db.commit()
@@ -79,9 +66,9 @@ class Database(object):
         self.cursor.execute(request, params)
         return self.cursor.rowcount, self.cursor.fetchall()
 
-    def RemoveJoueur(self, guildid, member_id):
-        request = "DELETE FROM joueurs WHERE guildID=%s AND memberID=%s"
-        params = [guildid, member_id]
+    def RemoveJoueur(self,  member_id):
+        request = "DELETE FROM joueurs WHERE memberID=%s"
+        params = [member_id]
         self.cursor.execute(request, params)
         self.db.commit()
 
@@ -96,34 +83,30 @@ class Database(object):
             print("An error occurred while updating the player record: ", e)
 
 
-    def recoverAllGuilds(self):
+    def recoverAll(self):
         request = "SELECT * FROM serveurs WHERE channelIdMessage != 0"
         self.cursor.execute(request)
         results = self.cursor.fetchall()
         return results
 
-    def GetJoueursOfGuild(self, guildid):
-        request = "SELECT * FROM joueurs WHERE guildID=" + str(guildid) + ";"
-        self.cursor.execute(request)
-        resultats = self.cursor.fetchall()
-        return resultats
 
-    def GetPlayerInfo(self, guildid, summonername):
-        request = "SELECT * FROM joueurs WHERE guildID=%s and SummonerName=%s"
-        params = [guildid, summonername]
+    def GetPlayerInfo(self, summonername):
+        request = "SELECT * FROM joueurs WHERE SummonerName=%s"
+        params = [summonername]
         self.cursor.execute(request, params)
         result = self.cursor.fetchone()
         return result
 
-    def GetPlayerInfoDiscord(self, guildid, discordid):
-        request = "SELECT * FROM joueurs WHERE guildID=%s and memberID=%s"
-        params = [guildid, discordid]
+    def GetPlayerInfoDiscord(self, member_id):
+        request = "SELECT * FROM joueurs WHERE memberID=%s"
+        params = [member_id]
         self.cursor.execute(request, params)
         result = self.cursor.fetchone()
+        print(result)
         return result
 
     def UpdatePlayerRecover(self):
-        request = "SELECT * FROM joueurs, serveurs WHERE joueurs.guildID = serveurs.guildID;"
+        request = "SELECT * FROM joueurs;"
         self.cursor.execute(request)
         result = self.cursor.fetchall()
         return result
@@ -156,12 +139,11 @@ class Database(object):
         self.cursor.execute(request)
         self.db.commit()
 
-    def GetClassement(self, guildid):
-        request = "SELECT joueurs.SummonerName, joueurs.memberID, classement.nbrWin, serveurs.channelIdMessage " \
-                  "FROM classement INNER JOIN joueurs ON joueurs.EncryptedID = classement.joueur INNER JOIN serveurs " \
-                  "ON serveurs.guildID = joueurs.guildID WHERE joueurs.guildID = %s ORDER BY classement.nbrWin DESC;" 
-        params = [guildid]
-        self.cursor.execute(request, params)
+    def GetClassement(self):
+        request = "SELECT DISTINCT joueurs.SummonerName, joueurs.memberID, classement.nbrWin " \
+                  "FROM classement INNER JOIN joueurs ON joueurs.EncryptedID = classement.joueur INNER JOIN serveurs "\
+                    " ORDER BY classement.nbrWin DESC "
+        self.cursor.execute(request)
         result = self.cursor.fetchall()
         return result
 
