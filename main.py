@@ -36,6 +36,18 @@ ranks = {
     "I": 4,
 }
 
+class CustomHelpCommand(commands.DefaultHelpCommand):
+    async def send_bot_help(self, mapping):
+        embed = discord.Embed(title="Aide", color=0x00ff00)
+        embed.add_field(name="/bug <message>", value="Alerte l'administrateur d'un(e) potentiel(le) problème/demande", inline=False)
+        embed.add_field(name="/addjoueur <summonername>", value="Ajoute un joueur à la base de données", inline=False)
+        embed.add_field(name="/classement", value="Affiche le classement du serveur", inline=False)
+        embed.add_field(name="/profil <summonername>", value="Affiche le profil du joueur", inline=False)
+        embed.add_field(name="/profildiscord <membre>", value="Affiche le profil du joueur", inline=False)
+        embed.add_field(name="/help", value="Affiche l'aide", inline=False)
+        await self.get_destination().send(embed=embed)
+
+client.help_command = CustomHelpCommand()
 
 
 def displayInfo(player):
@@ -87,6 +99,7 @@ def addPlayer(summonername, guild, member_id):
 def check_rang(player, guild):
     urlRanks = 'https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/' + player[0] + \
                '?api_key=' + riot_api_key
+    print(urlRanks)
     r = requests.get(urlRanks)
     ranking = r.json()
     if r.status_code != 200:
@@ -203,9 +216,13 @@ async def on_ready():
     await client.tree.sync()
     await client.wait_until_ready()
     print("Chargement de l'activité...")
-    await client.change_presence(activity=discord.Game(name="Uwu ici on parle de League of Legends"))
+    stream = discord.Streaming(name="League of Legends", url="https://www.twitch.tv/riotgames")
+    await client.change_presence(activity=stream, status=discord.Status.online)
+    
+    print("Chargement des tâches...")
     on_update.start()
     classement.start()
+
 
 
 @client.event
@@ -241,7 +258,6 @@ async def on_message(message):
         return
     await client.process_commands(message)
 
-
 @client.tree.command(name="initialize", description="Initialise un nouveau serveur")
 async def initialize(ints, channelmessage: discord.TextChannel,
                      roleaping: discord.Role = None):
@@ -263,7 +279,6 @@ async def initialize(ints, channelmessage: discord.TextChannel,
             db.InitializeServer(ints.guild_id, channelmessage.id, roleaping.id)
         await ints.response.send_message("Le serveur a bien été initialisé")
 
-
 @client.tree.command(name="addjoueur", description="S'ajouter dans la liste des joueurs")
 async def addJoueur(ints, nomjoueur: str):
     print("Addjoueur : une demande d'ajout a été envoyée")
@@ -278,24 +293,6 @@ async def addJoueur(ints, nomjoueur: str):
         await ints.response.send_message("Vous êtes déjà dans la liste du Bot.")
     else:
         print("Erreur lors de l'ajout.")
-
-
-@client.tree.command(name="leavelpstracker", description="Se retirer de la liste des joueurs")
-async def removeJoueur(ints):
-    print(" Removejoueur : une demande de retrait a été envoyée")
-    rowCount, res = db.GetJoueurFromMemberId(ints.user.id)
-    if rowCount == 1:
-        db.DeleteClassement(res[0][0])
-    exist = False
-    for joueur in res:
-        if joueur[7] == ints.guild_id:
-            exist = True
-    if exist:
-        db.RemoveJoueur(ints.guild_id, ints.user.id)
-        await ints.response.send_message("Vous avez été retiré de la liste")
-    else:
-        await ints.response.send_message("Vous n'êtes pas présent dans la liste")
-
 
 @client.tree.command(name="listejoueurs", description="Liste des joueurs")
 async def listeJoueurs(ints):
@@ -317,40 +314,6 @@ async def listeJoueurs(ints):
         retour = ''.join(temp)
     await ints.followup.send(retour)
 
-
-@client.tree.command(name="infojoueur", description="Donne les infos d'un joueur")
-async def info_joueur(ints, summonername: str):
-    await ints.response.defer()
-    print("Infojoueur : une info de joueur a été demandée à la BDD")
-    p = db.GetPlayerInfo(ints.guild_id, summonername)
-    if p:
-        temp = "Le joueur " + p[1] + " est classé " + str(p[2]) + " " + \
-               str(p[3]) + " avec " + str(p[4]) + " LPs."
-        if p[5] == 1:
-            x = p[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
-            temp += "\nLe joueur est actuellement en BO : " + x
-        await ints.followup.send(temp)
-    else:
-        temp = "Erreur lors de la récupération du joueur. Veuillez vérifier qu'il existe bien"
-        await ints.followup.send(temp)
-
-@client.tree.command(name="infojoueurdiscord", description="Donne les infos d'un joueur")
-async def info_joueur_discord(ints, membre: discord.Member):
-    await ints.response.defer()
-    print("Infojoueurdiscord : une info de membre Discord a été demandée à la BDD")
-    p = db.GetPlayerInfoDiscord(ints.guild_id, membre.id)
-    if p:
-        temp = "Le joueur " + p[1] + " est classé " + str(p[2]) + " " + \
-               str(p[3]) + " avec " + str(p[4]) + " LPs."
-        if p[5] == 1:
-            x = p[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
-            temp += "\nLe joueur est actuellement en BO : " + x
-        await ints.followup.send(temp)
-    else:
-        temp = "Erreur lors de la récupération du joueur. Veuillez vérifier qu'il existe bien"
-        await ints.followup.send(temp)
-
-
 @client.tree.command(name="alert", description="Alerte tous les utilisateurs du bot")
 async def alertGuilds(ints, message: str):
     if ints.user.id not in admin_id:
@@ -366,8 +329,7 @@ async def alertGuilds(ints, message: str):
     print("Alert : une alerte a été envoyée aux serveurs")
     await ints.followup.send("L'alerte a bien été envoyée")
 
-
-@client.tree.command(name="alertadmin", description="Alerte l'administrateur d'un(e) potentiel(le) problème/demande")
+@client.tree.command(name="bug", description="Alerte l'administrateur d'un(e) potentiel(le) problème/demande")
 async def alert_admin(ints, message: str):
     await ints.response.defer()
     atlas = await client.fetch_user(admin_id[0])
@@ -376,7 +338,7 @@ async def alert_admin(ints, message: str):
     await ints.followup.send("Votre message a bien été envoyé. Vous serez recontacté sous peu."
                              " Merci de ne pas spam la commande")
 
-@client.tree.command(name="classemnt", description="Affiche le classement du serveur")
+@client.tree.command(name="classement", description="Affiche le classement du serveur")
 async def classement(ints):
     await ints.response.defer()
     print("Classement : un classement a été demandé à la BDD")
@@ -384,11 +346,67 @@ async def classement(ints):
     if not res:
         await ints.followup.send("Le classement est vide")
     else:
-        msg_return = "Voici les meilleurs joueurs : \n"
-        for i in res:
-            msg_return += " - (<@" + i[1] + ">) " + i[0] + " : " + str(i[2]) + " LPs \n"
-        await ints.followup.send(msg_return)
+        embed = discord.Embed(title="Classement", color=0x00ff00)
+        for i in range(10):
+            if i < len(res):
+                embed.add_field(name=f" -  " + res[i][0], value=str(res[i][2]) + " LPs", inline=False)
+        await ints.followup.send(embed=embed)
 
+
+@client.tree.command(name="profil", description="Affiche le profil d'un joueur")
+async def profil(ints, summonername: str = None):
+    db = Database()
+    await ints.response.defer()
+    if summonername is None:
+        summonername = db.GetPlayerInfoDiscord(ints.guild_id, ints.user.id)[1]
+        if summonername is None:
+            await ints.followup.send("Vous n'avez pas de profil enregistré. Veuillez en créer un avec la commande /addjoueur")
+            return
+    print("Profil : un profil a été demandé à la BDD")
+    p = db.GetPlayerInfo(ints.guild_id, summonername)
+    if not p:
+        embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
+        embed.add_field(name="Rang", value="Joueur non trouvé", inline=False)
+    else:
+        embed = discord.Embed(title=f"Profil de {p[1]}", color=0x00ff00)
+        embed.add_field(name="Rang", value=f"{p[2]} {p[3]} avec {p[4]} LPs", inline=False)
+        if p[5] == 1:
+            x = p[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
+            embed.add_field(name="BO", value=x, inline=False)
+    await ints.followup.send(embed=embed)
+
+@client.tree.command(name="profildiscord", description="Affiche le profil d'un joueur")
+async def profil_discord(ints, membre: discord.Member = None):
+    db = Database()
+    await ints.response.defer()
+    if membre is None:
+        summonername = db.GetPlayerInfoDiscord(ints.guild_id, ints.user.id)[1]
+        if summonername is None:
+            await ints.followup.send("Vous n'avez pas de profil enregistré. Veuillez en créer un avec la commande /addjoueur")
+            return
+    else:
+        summonername = db.GetPlayerInfoDiscord(ints.guild_id, membre.id)[1]
+        if summonername is None:
+            await ints.followup.send("Ce joueur n'a pas de profil enregistré. Veuillez en créer un avec la commande /addjoueur")
+            return
+    print("Profil : un profil a été demandé à la BDD")
+    p = db.GetPlayerInfo(ints.guild_id, summonername)
+    if not p:
+        embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
+        embed.add_field(name="Rang", value="Joueur non trouvé", inline=False)
+    else:
+        embed = discord.Embed(title=f"Profil de {p[1]}", color=0x00ff00)
+        embed.add_field(name="Rang", value=f"{p[2]} {p[3]} avec {p[4]} LPs", inline=False)
+        if p[5] == 1:
+            x = p[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
+            embed.add_field(name="BO", value=x, inline=False)
+    await ints.followup.send(embed=embed)
+
+
+@client.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return # empêcher l'affichage de l'erreur CommandNotFound
 
 @tasks.loop(minutes=3.0)
 async def on_update():
@@ -409,7 +427,6 @@ async def on_update():
                 print("Error guild '" + guild_infos[1] + "' : Le bot n'a pas le droit d'écrire"
                                                          " dans le channel initialisé.")
 
-
 @tasks.loop(time=datetime.time(21, 0, 0, 0, ZoneInfo("Europe/Paris")))
 async def classement():
     td = datetime.datetime.now(ZoneInfo("Europe/Paris"))
@@ -423,6 +440,5 @@ async def classement():
     msg_return += "\nBravo à tous les participants. La classement est maintenant reset. A la semaine prochaine !"
     await client.get_channel(c[0][3]).send(msg_return)
     db.ResetClassement()
-
 
 client.run(TOKEN)
