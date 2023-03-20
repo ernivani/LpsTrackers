@@ -433,7 +433,8 @@ async def on_update():
     compteur += 1
     print("\nVérification n°" + str(compteur))
     for i in db.UpdatePlayerRecover():
-        channel = db.getAllChannels()
+        channels = db.getAllChannels()
+        
         retour = check_rang(i)
         if retour is None:
             print("Erreur RIOT API.")
@@ -443,9 +444,15 @@ async def on_update():
                         summoner_names=i[1], result=retour[2], lp_change=lpchange)
             retour[0] += "\n" + displayInfo(retour[1])
             try:
-                for c in channel:
-                    if c[0] == i[0]:
-                        await client.get_channel(c[1]).send(retour[0])
+                for channel_id in channels:
+                    channel = client.get_channel(int(channel_id[0]))
+                    if channel is not None:
+                        # await channel.send(retour[0])
+                        embed = discord.Embed(title=f"Rang de {i[1]}", color=0x00ff00)
+                        embed.add_field(name="Rang", value=retour[0], inline=False)
+                        await channel.send(embed=embed)
+                    else:
+                        print("Error guild not found")
             except discord.errors.Forbidden:
                 print("Error guild not found")
 
