@@ -46,10 +46,10 @@ class Database(object):
         self.cursor.execute(request)
         return self.cursor.fetchall()
 
-    def addJoueur(self, encryptedid, summonername, tier, rank, lps, eb, prog, member_id):
-        request = "INSERT INTO joueurs (EncryptedID, SummonerName, Tier, `Rank`, leaguePoints, enBO, Progress, " \
-                " memberID) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-        params = [encryptedid, summonername, tier, rank, lps, eb, prog, member_id]
+    def addJoueur(self, encryptedid, summonername, tier, rank, lps, eb, prog):
+        request = "INSERT INTO joueurs (EncryptedID, SummonerName, Tier, `Rank`, leaguePoints, enBO, Progress) " \
+                " VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        params = [encryptedid, summonername, tier, rank, lps, eb, prog]
         try:
             self.cursor.execute(request, params)
             self.db.commit()
@@ -80,6 +80,11 @@ class Database(object):
         except Exception as e:
             print("An error occurred while updating the player record: ", e)
 
+    def linkJoueur(self, member_id, playerid):
+        request = "UPDATE joueurs SET memberID=%s WHERE EncryptedID=%s"
+        params = [member_id, playerid]
+        self.cursor.execute(request, params)
+        self.db.commit()
 
     def recoverAll(self):
         request = "SELECT * FROM serveurs WHERE channelIdMessage != 0"
