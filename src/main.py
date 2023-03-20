@@ -79,6 +79,7 @@ def createPlayer(acc, rank, member_id):
 def addPlayer(summonername, member_id):
     urlSummoners = 'https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/' + summonername + \
                    '?api_key=' + riot_api_key
+    print(urlSummoners)
     r = requests.get(urlSummoners)
     if r.status_code != 200:
         print("Code erreur : " + str(r.status_code))
