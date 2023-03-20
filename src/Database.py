@@ -26,8 +26,6 @@ class Database(object):
         request = "INSERT INTO serveurs (guildID, guildName, channelIdMessage) "\
                   "VALUES (%s, %s, %s);"
         params = [guildid, guildname, cim]
-        # print the SQL query
-        print(request , params)
         self.cursor.execute(request, params)
         self.db.commit()
 
