@@ -46,10 +46,10 @@ class Database(object):
         self.cursor.execute(request)
         return self.cursor.fetchall()
 
-    def addJoueur(self, encryptedid, summonername, tier, rank, lps, eb, prog):
-        request = "INSERT INTO joueurs (EncryptedID, SummonerName, Tier, `Rank`, leaguePoints, enBO, Progress) " \
-                " VALUES (%s, %s, %s, %s, %s, %s, %s)"
-        params = [encryptedid, summonername, tier, rank, lps, eb, prog]
+    def addJoueur(self, encryptedid, summonername, tier, rank, profileIconId , lps, eb, prog):
+        request = "INSERT INTO joueurs (EncryptedID, SummonerName, Tier, `Rank`, leaguePoints, enBO, Progress,profileIconId) " \
+                " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        params = [encryptedid, summonername, tier, rank, lps, eb, prog, profileIconId]
         try:
             self.cursor.execute(request, params)
             self.db.commit()

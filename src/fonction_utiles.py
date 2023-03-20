@@ -26,7 +26,9 @@ ranks = {
     "II": 3,
     "I": 4,
 }
-
+# https://ddragon.leagueoflegends.com/api/versions.json -> take first array
+req = requests.get("https://ddragon.leagueoflegends.com/api/versions.json")
+last_icon_version = req.json()[0]
 
 db = Database()
 
@@ -63,16 +65,15 @@ def createPlayer(acc, rank):
             else:
                 progress = ""
                 enBo = False
-            rc = db.addJoueur(acc.get('id'), acc.get('name'), typegames.get('tier'), typegames.get('rank'),
+            rc = db.addJoueur(acc.get('id'), acc.get('name'), typegames.get('tier'), typegames.get('rank'), acc.get('profileIconId'),
                               typegames.get('leaguePoints'), enBo, progress)
-            db.AddClassement(acc.get('id'))
+            # db.AddClassemen0t(acc.get('id'))
             return rc
 
 
 def addPlayer(summonername):
     urlSummoners = 'https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/' + summonername + \
                    '?api_key=' + riot_api_key
-    print(urlSummoners)
     r = requests.get(urlSummoners)
     if r.status_code != 200:
         print("Code erreur : " + str(r.status_code))
@@ -103,12 +104,12 @@ def check_rang(player, guild='0'):
         if typequeue.get('queueType') == 'RANKED_SOLO_5x5':
             ret = ""
             eloactuel = {
-                "summonername": player[1],
-                "tier": player[2],
-                "rank": player[3],
-                "lps": player[4],
-                "enBo": player[5],
-                "progress": player[6]
+                "summonername": player[2],
+                "tier": player[3],
+                "rank": player[4],
+                "lps": player[5],
+                "enBo": player[6],
+                "progress": player[7]
             }
             newelo = {
                 "summonername": typequeue.get('summonerName'),
@@ -137,6 +138,8 @@ def check_rang(player, guild='0'):
             if typequeue.get('tier') == eloactuel.get("tier") and typequeue.get('rank') == eloactuel.get("rank") and \
                     typequeue.get('leaguePoints') == eloactuel.get("lps"):
                 return ["RAS", newelo]
+            
+            # TypeError: '<' not supported between instances of 'int' and 'NoneType'
             if typequeue.get('tier') != eloactuel.get("tier") \
                     and tiers.get(typequeue.get('tier')) < tiers.get(eloactuel.get("tier")):
                 ret += str(typequeue.get('summonerName')) + " a derank de " + eloactuel.get('tier') + " à " \

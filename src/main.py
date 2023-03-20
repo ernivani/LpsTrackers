@@ -191,6 +191,7 @@ async def profil(ints, summonername: str = None):
         if player_info != 1:
             embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
             embed.add_field(name="Rang", value="Veuillez verifier que le nom d'invocateur est correct et que le compte est niveau 30", inline=False)
+            # add icon to embed
             await ints.followup.send(embed=embed)
             return
         else:
@@ -198,8 +199,9 @@ async def profil(ints, summonername: str = None):
             player_info = db2.GetPlayerInfo(summonername)
         
     # Si le joueur existe, on crée un embed avec ses informations
-    player_name = player_info[1]
+    player_name = player_info[2]
     
+    print(player_info)
     rank = f"{player_info[2]} {player_info[3]} avec {player_info[4]} LPs"
     embed = discord.Embed(title=f"Profil de {player_name}", color=0x00ff00)
     embed.add_field(name="Rang", value=rank, inline=False)
@@ -216,6 +218,8 @@ async def profil(ints, summonername: str = None):
         embed.add_field(name="Historique", value=games_str, inline=False)
     else:
         embed.add_field(name="Historique", value="Aucune partie trouvée", inline=False)
+    
+    embed.set_thumbnail(url=f"https://ddragon.leagueoflegends.com/cdn/13.5.1/img/profileicon/{player_info[1]}.png")
 
     await ints.followup.send(embed=embed)
 
@@ -276,7 +280,6 @@ async def on_update():
     print("\nVérification n°" + str(compteur))
     for i in db.UpdatePlayerRecover():
         channels = db.getAllChannels()
-        
         retour = check_rang(i)
         if retour is None:
             print("Erreur RIOT API.")
