@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 import discord
 import requests
 from discord.ext import tasks, commands
+import random
 
 from Database import Database
 
@@ -26,6 +27,10 @@ ranks = {
     "II": 3,
     "I": 4,
 }
+
+colors = [0xFFE4E1, 0x00FF7F, 0xD8BFD8, 0xDC143C, 0xFF4500, 0xDEB887, 0xADFF2F, 0x800000, 0x4682B4, 0x006400, 0x808080, 0xA0522D, 0xF08080, 0xC71585, 0xFFB6C1, 0x00CED1]
+
+
 # https://ddragon.leagueoflegends.com/api/versions.json -> take first array
 req = requests.get("https://ddragon.leagueoflegends.com/api/versions.json")
 last_icon_version = req.json()[0]
@@ -200,3 +205,7 @@ def add_history( EncryptedID, date_time, summoner_names, result, lp_change):
 def get_history(EncryptedID):
     db = Database()
     return db.getGameHistory(EncryptedID)
+
+def get_random_color():
+    # from the list of colors, get a random color
+    return random.choice(colors)

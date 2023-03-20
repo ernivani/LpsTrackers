@@ -156,7 +156,7 @@ async def classement(ints):
         await ints.followup.send("Le classement est vide")
     else:
         # Sinon, on crée un embed avec les 10 premiers joueurs du classement
-        embed = discord.Embed(title="Classement", color=0x00ff00)
+        embed = discord.Embed(title="Classement", color=get_random_color())
         for i in range(10):
             if i < len(res):
                 player_name = res[i][0]
@@ -189,7 +189,7 @@ async def profil(ints, summonername: str = None):
         # Si le joueur n'existe pas dans la base de données, on l'ajoute
         player_info = addPlayer(summonername)
         if player_info != 1:
-            embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
+            embed = discord.Embed(title=f"Profil de {summonername}", color=get_random_color())
             embed.add_field(name="Rang", value="Veuillez verifier que le nom d'invocateur est correct et que le compte est niveau 30", inline=False)
             # add icon to embed
             await ints.followup.send(embed=embed)
@@ -203,7 +203,7 @@ async def profil(ints, summonername: str = None):
     
     print(player_info)
     rank = f"{player_info[2]} {player_info[3]} avec {player_info[4]} LPs"
-    embed = discord.Embed(title=f"Profil de {player_name}", color=0x00ff00)
+    embed = discord.Embed(title=f"Profil de {player_name}", color=get_random_color())
     embed.add_field(name="Rang", value=rank, inline=False)
 
         # On ajoute les informations de la dernière série de parties classées
@@ -243,10 +243,10 @@ async def profil_discord(ints, membre: discord.Member = None):
     print("Profil : un profil a été demandé à la BDD")
     p = db.GetPlayerInfo( summonername)
     if not p:
-        embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
+        embed = discord.Embed(title=f"Profil de {summonername}", color=get_random_color())
         embed.add_field(name="Rang", value="Joueur non trouvé", inline=False)
     else:
-        embed = discord.Embed(title=f"Profil de {p[1]}", color=0x00ff00)
+        embed = discord.Embed(title=f"Profil de {p[1]}", color=get_random_color())
         embed.add_field(name="Rang", value=f"{p[2]} {p[3]} avec {p[4]} LPs", inline=False)
         if p[5] == 1:
             x = p[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
@@ -257,7 +257,7 @@ async def profil_discord(ints, membre: discord.Member = None):
 @client.tree.command(name="ping", description="Affiche le ping du bot")
 async def ping(ints):
     await ints.response.defer()
-    embed = discord.Embed(title="Ping", color=0x00ff00)
+    embed = discord.Embed(title="Ping", color=get_random_color())
     embed.add_field(name="Ping", value=f"{round(client.latency * 100 + random.randint(-1, 1) )} ms", inline=False)
     await ints.followup.send(embed=embed)
 
@@ -293,7 +293,7 @@ async def on_update():
                     channel = client.get_channel(int(channel_id[0]))
                     if channel is not None:
                         # await channel.send(retour[0])
-                        embed = discord.Embed(title=f"Rang de {i[1]}", color=0x00ff00)
+                        embed = discord.Embed(title=f"Rang de {i[1]}", color=get_random_color())
                         embed.add_field(name="Rang", value=retour[0], inline=False)
                         await channel.send(embed=embed)
                     else:
