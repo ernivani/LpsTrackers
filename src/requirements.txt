@@ -1,5 +1,0 @@
-datetime
-discord
-requests
-mysql-connector-python
-zoneinfo
