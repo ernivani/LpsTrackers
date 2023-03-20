@@ -53,7 +53,7 @@ def displayInfo(player):
     return temp
 
 
-def createPlayer(acc, rank, member_id):
+def createPlayer(acc, rank):
     for typegames in rank:
         if typegames.get('queueType') == "RANKED_SOLO_5x5":
             if typegames.get('miniSeries') is not None:
@@ -64,12 +64,12 @@ def createPlayer(acc, rank, member_id):
                 progress = ""
                 enBo = False
             rc = db.addJoueur(acc.get('id'), acc.get('name'), typegames.get('tier'), typegames.get('rank'),
-                              typegames.get('leaguePoints'), enBo, progress, member_id)
+                              typegames.get('leaguePoints'), enBo, progress)
             db.AddClassement(acc.get('id'))
             return rc
 
 
-def addPlayer(summonername, member_id):
+def addPlayer(summonername):
     urlSummoners = 'https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/' + summonername + \
                    '?api_key=' + riot_api_key
     print(urlSummoners)
@@ -86,7 +86,7 @@ def addPlayer(summonername, member_id):
     if r.status_code != 200:
         print("Erreur API Riot.")
         return None
-    nbr = createPlayer(account, ranking, member_id)
+    nbr = createPlayer(account, ranking)
     return nbr
 
 
