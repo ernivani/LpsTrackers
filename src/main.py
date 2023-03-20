@@ -107,7 +107,7 @@ async def initialize(ints, channelmessage: discord.TextChannel,
 @client.tree.command(name="addjoueur", description="S'ajouter dans la liste des joueurs")
 async def addJoueur(ints, nomjoueur: str):
     print("Addjoueur : une demande d'ajout a été envoyée")
-    ret = addPlayer(nomjoueur, ints.user.id)
+    ret = addPlayer(nomjoueur)
     if ret is None:
         msg = "Erreur lors de l'ajout du joueur. Veuillez vérifier qu'il existe bien, qu'il est niveau 30 et qu'il" \
               " a fini ses games de placements."
@@ -177,37 +177,45 @@ async def profil(ints, summonername: str = None):
         user_id = ints.user.id
         summonername = db.GetPlayerInfoDiscord(user_id)
         if summonername is None:
-            await ints.followup.send("Vous n'avez pas de profil enregistré. Veuillez en créer un avec la commande /addjoueur")
+            await ints.followup.send("Vous n'avez pas de profil enregistré. Veuillez vous lier à un compte avec la commande /link")
             return
         
         summonername = summonername[1]
 
-    print("Profil : un profil a été demandé à la BDD")
+    print("Profil : un profil a été demandé")
     player_info = db.GetPlayerInfo( summonername)
 
     if not player_info:
-        # Si le joueur n'existe pas dans la base de données, on renvoie un embed d'erreur
-        embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
-        embed.add_field(name="Rang", value="Joueur non trouvé dans notre base de données", inline=False)
-    else:
-        # Si le joueur existe, on crée un embed avec ses informations
-        player_name = player_info[1]
-        rank = f"{player_info[2]} {player_info[3]} avec {player_info[4]} LPs"
-        embed = discord.Embed(title=f"Profil de {player_name}", color=0x00ff00)
-        embed.add_field(name="Rang", value=rank, inline=False)
+        # Si le joueur n'existe pas dans la base de données, on l'ajoute
+        player_info = addPlayer(summonername)
+        if player_info != 1:
+            embed = discord.Embed(title=f"Profil de {summonername}", color=0xff0000)
+            embed.add_field(name="Rang", value="Veuillez verifier que le nom d'invocateur est correct et que le compte est niveau 30", inline=False)
+            await ints.followup.send(embed=embed)
+            return
+        else:
+            db2 = Database()
+            player_info = db2.GetPlayerInfo(summonername)
+        
+    # Si le joueur existe, on crée un embed avec ses informations
+    player_name = player_info[1]
+    
+    rank = f"{player_info[2]} {player_info[3]} avec {player_info[4]} LPs"
+    embed = discord.Embed(title=f"Profil de {player_name}", color=0x00ff00)
+    embed.add_field(name="Rang", value=rank, inline=False)
 
         # On ajoute les informations de la dernière série de parties classées
-        if player_info[5] == 1:
-            games_str = player_info[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
-            embed.add_field(name="BO", value=games_str, inline=False)
+    if player_info[5] == 1:
+        games_str = player_info[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
+        embed.add_field(name="BO", value=games_str, inline=False)
 
-        # On ajoute l'historique des 10 dernières parties
-        games = get_history(player_info[0])
-        if games:
-            games_str = "\n".join([f"{game[1]} : {'Victoire' if game[3] == '1' else 'Défaite'} avec {game[4]} LPs" for game in games])
-            embed.add_field(name="Historique", value=games_str, inline=False)
-        else:
-            embed.add_field(name="Historique", value="Aucune partie trouvée", inline=False)
+    # On ajoute l'historique des 10 dernières parties
+    games = get_history(player_info[0])
+    if games:
+        games_str = "\n".join([f"{game[1]} : {'Victoire' if game[3] == '1' else 'Défaite'} avec {game[4]} LPs" for game in games])
+        embed.add_field(name="Historique", value=games_str, inline=False)
+    else:
+        embed.add_field(name="Historique", value="Aucune partie trouvée", inline=False)
 
     await ints.followup.send(embed=embed)
 
@@ -246,7 +254,7 @@ async def profil_discord(ints, membre: discord.Member = None):
 async def ping(ints):
     await ints.response.defer()
     embed = discord.Embed(title="Ping", color=0x00ff00)
-    embed.add_field(name="Ping", value=f"{round(client.latency * 100 + random.randint(-2, 2) )} ms", inline=False)
+    embed.add_field(name="Ping", value=f"{round(client.latency * 100 + random.randint(-1, 1) )} ms", inline=False)
     await ints.followup.send(embed=embed)
 
     
