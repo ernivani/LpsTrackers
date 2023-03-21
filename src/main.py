@@ -11,6 +11,36 @@ from Token import TOKEN
 
 from fonction_utiles import *
 
+# getChampionName = lambda id: [champion["name"] for champion in champions.values() if champion["key"] == str(id)][0]
+
+
+# req = requests.get("https://ddragon.leagueoflegends.com/cdn/13.5.1/data/en_US/champion.json")
+# champions = req.json()["data"]
+# print("Chargement des champions...")
+# print(len(champions), "champions chargés")
+# print("Chargement des champions terminé")
+
+# # https://ddragon.leagueoflegends.com/cdn/13.5.1/img/champion/{nom du champion}.png
+
+# req2 = requests.get("https://euw1.api.riotgames.com/lol/platform/v3/champion-rotations?api_key=RGAPI-65504c99-d873-4137-871d-bf9a48d3e094")
+# championRotation = req2.json()["freeChampionIds"]
+# championForNewPlayer = req2.json()["freeChampionIdsForNewPlayers"]
+# print("Chargement des champions gratuits...")
+# print(len(championRotation), "champions gratuits chargés")
+# print("Chargement des champions gratuits terminé")
+
+# for championsRota in championRotation:
+#     championName = getChampionName(championsRota)
+#     print(championName)
+
+# for championsRota in championForNewPlayer:
+#     championName = getChampionName(championsRota)
+#     print(championName)
+
+
+
+
+
 compteur = 0
 db = Database()
 admin_id = [486268235017093130]
@@ -18,7 +48,7 @@ server_id = 1077666645176225893
 
 
 intents = discord.Intents.all()
-client = commands.Bot(command_prefix="/", intents=intents)
+client = commands.Bot(command_prefix=".", intents=intents)
 
 
 client.help_command = CustomHelpCommand()
@@ -166,7 +196,6 @@ async def classement(ints):
         await ints.followup.send(embed=embed)
 
 
-
 @client.tree.command(name="profil", description="Affiche le profil d'un joueur")
 async def profil(ints, summonername: str = None):
     db = Database()
@@ -202,13 +231,13 @@ async def profil(ints, summonername: str = None):
     player_name = player_info[2]
     
     print(player_info)
-    rank = f"{player_info[2]} {player_info[3]} avec {player_info[4]} LPs"
+    rank = f"{player_info[3]} {player_info[4]} avec {player_info[5]} LPs"
     embed = discord.Embed(title=f"Profil de {player_name}", color=get_random_color())
     embed.add_field(name="Rang", value=rank, inline=False)
 
         # On ajoute les informations de la dernière série de parties classées
-    if player_info[5] == 1:
-        games_str = player_info[6].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
+    if player_info[6] == 1:
+        games_str = player_info[7].replace('W', ":white_check_mark: ").replace('L', ":no_entry_sign: ").replace('N', ":clock3: ")
         embed.add_field(name="BO", value=games_str, inline=False)
 
     # On ajoute l'historique des 10 dernières parties
@@ -222,7 +251,6 @@ async def profil(ints, summonername: str = None):
     embed.set_thumbnail(url=f"https://ddragon.leagueoflegends.com/cdn/13.5.1/img/profileicon/{player_info[1]}.png")
 
     await ints.followup.send(embed=embed)
-
 
 
 @client.tree.command(name="profildiscord", description="Affiche le profil d'un joueur")
@@ -284,7 +312,8 @@ async def on_update():
         if retour is None:
             print("Erreur RIOT API.")
         elif retour[0] != "RAS":
-            lpchange = int(retour[1]['lps'] -int(i[4]))
+            print(retour, i)
+            lpchange = int(retour[1]['lps'] -int(i[5]))
             add_history(EncryptedID=i[0], date_time=datetime.datetime.now(ZoneInfo("Europe/Paris")),
                         summoner_names=i[1], result=retour[2], lp_change=lpchange)
             retour[0] += "\n" + displayInfo(retour[1])
@@ -301,5 +330,19 @@ async def on_update():
             except discord.errors.Forbidden:
                 print("Error guild not found")
 
+# créer une commande lps help
+@client.tree.command(name="help", description="Affiche l'aide")
+async def help(ints):
+    await ints.response.defer()
+    embed = discord.Embed(title="Aide", color=get_random_color())
+    embed.add_field(name="Commandes", value="`/addjoueur` : ajoute un joueur à la base de données\n"
+                                           "`/addchannel` : ajoute un channel à la base de données\n"
+                                           "`/removechannel` : supprime un channel de la base de données\n"
+                                           "`/profil` : affiche le profil d'un joueur\n"
+                                           "`/profildiscord` : affiche le profil d'un joueur\n"
+                                           "`/ping` : affiche le ping du bot\n"
+                                           "`/clearall` : supprime tous les messages du channel\n"
+                                           "`/help` : affiche l'aide", inline=False)
+    await ints.followup.send(embed=embed)
 
 client.run(TOKEN)
